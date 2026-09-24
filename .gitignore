@@ -4,5 +4,5 @@ __pycache__/
 .env
 .ipynb_checkpoints/
 vector_db/
-models/*.pkl
+
 notebooks/

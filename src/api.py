@@ -27,7 +27,9 @@ embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 # Connect to ChromaDB
 # -----------------------------
 client = chromadb.PersistentClient(path="vector_db")
-collection = client.get_collection(name="maintenance_knowledge")
+collection = client.get_or_create_collection(
+    name="maintenance_knowledge"
+)
 
 
 # -----------------------------
