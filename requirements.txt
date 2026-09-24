@@ -1,0 +1,13 @@
+﻿fastapi
+uvicorn
+pandas
+scikit-learn
+joblib
+numpy
+torch==2.14.0
+sentence-transformers==6.1.0
+chromadb
+langchain
+langchain-core
+langchain-ollama
+ollama
