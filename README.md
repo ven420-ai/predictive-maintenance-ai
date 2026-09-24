@@ -152,3 +152,73 @@ Prompt + Retrieved Context
 Llama 3.2
     ↓
 Generated Response
+
+
+CI/CD
+
+GitHub Actions automatically:
+
+Checks out the repository
+Sets up Python
+Installs dependencies
+Runs API tests
+Builds the Docker image
+Publishes the container image to GitHub Container Registry
+
+Run tests locally: python -m pytest
+
+Running Locally
+Create and activate the virtual environment: python -m venv venv
+.\venv\Scripts\Activate.ps1
+
+Install dependencies:pip install -r requirements.txt
+
+Start the API:uvicorn src.api:app --reload
+
+Open the API documentation: http://127.0.0.1:8000/docs
+
+Local LLM
+
+The project uses Ollama to run Llama 3.2 locally.
+
+Make sure Ollama is running and the model is available:ollama run llama3.2
+
+Project Structure
+
+PredictiveMaintenanceAi/
+│
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+│
+├── models/
+│   └── failure_prediction_model.pkl
+│
+├── src/
+│   ├── __init__.py
+│   ├── api.py
+│   └── train_model.py
+│
+├── tests/
+│   └── test_api.py
+│
+├── data/
+├── documents/
+│
+├── .dockerignore
+├── .gitignore
+├── Dockerfile
+├── requirements.txt
+└── README.md
+
+
+Future Improvements
+
+Real industrial sensor datasets
+Model monitoring
+Authentication and authorization
+Cloud deployment
+Advanced anomaly detection
+Automated model retraining
+Monitoring and observability
+Production database integration

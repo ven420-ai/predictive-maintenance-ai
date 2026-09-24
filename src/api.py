@@ -1,3 +1,4 @@
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
@@ -9,6 +10,14 @@ from langchain_ollama import ChatOllama
 
 
 app = FastAPI(title="Predictive Maintenance AI")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # -----------------------------
@@ -168,41 +177,7 @@ def analyze(machine_data: MachineData):
 
     status = "FAILURE" if prediction == 1 else "NORMAL"
 
-    prompt = f"""
-You are a machine maintenance AI assistant.
 
-IMPORTANT:
-Use the numerical readings exactly as provided.
-Do not invent normal ranges.
-Do not contradict the ML prediction.
-Use the maintenance knowledge only as supporting evidence.
-
-Machine readings:
-Temperature: {machine_data.temperature}°C
-Vibration: {machine_data.vibration}
-Pressure: {machine_data.pressure}
-Voltage: {machine_data.voltage}V
-Operating hours: {machine_data.operating_hours}
-
-ML prediction:
-Status: {status}
-Failure probability: {probability:.2%}
-
-Maintenance knowledge:
-{context_text}
-
-Analyze the machine.
-
-Provide:
-1. Machine status
-2. Likely root cause
-3. Which readings are abnormal
-4. Evidence from the retrieved maintenance knowledge
-5. Recommended checks
-
-Be precise and do not claim a reading is normal unless the provided
-information explicitly supports that conclusion.
-"""
 
 
     # -----------------------------
