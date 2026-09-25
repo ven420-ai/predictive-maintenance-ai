@@ -21,32 +21,41 @@ function App() {
   };
 
   const analyzeMachine = async () => {
-    setLoading(true);
+  setLoading(true);
+  setResult(null);
 
-    try {
-      const response = await fetch("http://127.0.0.1:8000/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          temperature: Number(form.temperature),
-          vibration: Number(form.vibration),
-          pressure: Number(form.pressure),
-          voltage: Number(form.voltage),
-          operating_hours: Number(form.operating_hours),
-        }),
-      });
+  const machineData = {
+    temperature: Number(form.temperature),
+    vibration: Number(form.vibration),
+    pressure: Number(form.pressure),
+    voltage: Number(form.voltage),
+    operating_hours: Number(form.operating_hours),
+  };
 
-      const data = await response.json();
-      setResult(data);
-    } catch (error) {
-      console.error(error);
-      alert("Could not connect to FastAPI.");
+  try {
+    const response = await fetch("http://127.0.0.1:8000/analyze", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(machineData),
+    });
+
+    if (!response.ok) {
+      throw new Error("FastAPI request failed");
     }
 
+    const data = await response.json();
+
+    setResult(data);
+
+  } catch (error) {
+    console.error(error);
+    alert("Could not connect to FastAPI.");
+  } finally {
     setLoading(false);
-  };
+  }
+};
 
   return (
     <div className="app">

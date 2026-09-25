@@ -1,12 +1,17 @@
+from urllib import response
+
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
 import pandas as pd
 import chromadb
-
+import os
+from google import genai
 from sentence_transformers import SentenceTransformer
-from langchain_ollama import ChatOllama
+from torchgen import context
+import time
+
 
 
 app = FastAPI(title="Predictive Maintenance AI")
@@ -45,11 +50,10 @@ collection = client.get_or_create_collection(
 # Local LLM
 # -----------------------------
 import os
+from google import genai
 
-llm = ChatOllama(
-    model="llama3.2",
-    temperature=0,
-    base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+gemini_client = genai.Client(
+    api_key=os.getenv("GEMINI_API_KEY")
 )
 
 
@@ -59,6 +63,13 @@ llm = ChatOllama(
 class Question(BaseModel):
     query: str
 
+
+class MachineData(BaseModel):
+    temperature: float
+    vibration: float
+    pressure: float
+    voltage: float
+    operating_hours: int
 
 # -----------------------------
 # Home
@@ -74,19 +85,14 @@ def home():
 # ML Prediction
 # -----------------------------
 @app.post("/predict")
-def predict(
-    temperature: float,
-    vibration: float,
-    pressure: float,
-    voltage: float,
-    operating_hours: int
-):
+def predict(machine_data: MachineData):
+
     machine = pd.DataFrame({
-        "temperature": [temperature],
-        "vibration": [vibration],
-        "pressure": [pressure],
-        "voltage": [voltage],
-        "operating_hours": [operating_hours]
+        "temperature": [machine_data.temperature],
+        "vibration": [machine_data.vibration],
+        "pressure": [machine_data.pressure],
+        "voltage": [machine_data.voltage],
+        "operating_hours": [machine_data.operating_hours]
     })
 
     prediction = model.predict(machine)[0]
@@ -113,6 +119,8 @@ def retrieve_context(query, n_results=3):
     return results["documents"][0]
 
 
+
+
 # -----------------------------
 # GenAI / RAG endpoint
 # -----------------------------
@@ -128,42 +136,34 @@ def ask(question: Question):
     prompt = f"""
 You are a machine maintenance AI assistant.
 
-Answer the user's question using the maintenance
-knowledge retrieved from the knowledge base.
+Answer using the provided maintenance knowledge.
 
 Knowledge:
 {context_text}
 
-User question:
+Question:
 {question.query}
 
-Give a clear answer and mention the likely cause
-and recommended checks when appropriate.
+Give a concise answer with likely cause and recommended checks.
 """
 
-    response = llm.invoke(prompt)
+    response = gemini_client.models.generate_content(
+        model="gemini-3.8-flash",
+        contents=prompt
+    )
+
+    answer = response.text
 
     return {
         "question": question.query,
-        "answer": response.content,
+        "answer": answer,
         "sources": context
     }
-
-
-class MachineData(BaseModel):
-    temperature: float
-    vibration: float
-    pressure: float
-    voltage: float
-    operating_hours: int
 
 
 @app.post("/analyze")
 def analyze(machine_data: MachineData):
 
-    # -----------------------------
-    # 1. ML prediction
-    # -----------------------------
     machine = pd.DataFrame({
         "temperature": [machine_data.temperature],
         "vibration": [machine_data.vibration],
@@ -177,12 +177,6 @@ def analyze(machine_data: MachineData):
 
     status = "FAILURE" if prediction == 1 else "NORMAL"
 
-
-
-
-    # -----------------------------
-    # 2. RAG retrieval
-    # -----------------------------
     query = f"""
     Machine temperature {machine_data.temperature},
     vibration {machine_data.vibration},
@@ -198,12 +192,12 @@ def analyze(machine_data: MachineData):
         f"- {doc}" for doc in context
     )
 
-
-    # -----------------------------
-    # 3. LLM analysis
-    # -----------------------------
     prompt = f"""
 You are a machine maintenance AI assistant.
+
+Use the machine readings exactly as provided.
+Do not invent normal ranges.
+Do not contradict the ML prediction.
 
 Machine readings:
 Temperature: {machine_data.temperature}°C
@@ -224,19 +218,38 @@ Analyze the machine.
 Provide:
 1. Machine status
 2. Likely root cause
-3. Evidence from the readings
-4. Recommended checks
+3. Which readings may indicate a problem
+4. Evidence from the maintenance knowledge
+5. Recommended checks
 """
 
-    response = llm.invoke(prompt)
+    answer = None
 
+    for attempt in range(3):
+        try:
+            response = gemini_client.models.generate_content(
+                model="gemini-3.8-flash",
+                contents=prompt
+            )
 
-    # -----------------------------
-    # 4. Final response
-    # -----------------------------
+            answer = response.text
+            break
+
+        except Exception as e:
+            print(f"Attempt {attempt + 1} failed: {e}")
+            time.sleep(2)
+
+    if answer is None:
+        answer = (
+            "AI analysis is temporarily unavailable. "
+            "The ML prediction and retrieved maintenance knowledge "
+            "are still available."
+        )
+
     return {
+        "machine_data": machine_data.dict(),
         "status": status,
         "failure_probability": round(float(probability), 4),
-        "analysis": response.content,
+        "analysis": answer,
         "sources": context
     }

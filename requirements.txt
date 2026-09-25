@@ -13,3 +13,4 @@ langchain-ollama
 ollama
 pytest
 httpx
+google-genai
