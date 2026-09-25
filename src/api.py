@@ -18,7 +18,7 @@ app = FastAPI(title="Predictive Maintenance AI")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "https://predictive-maintenance-c1i93zv7y-labs4mads.vercel.app"],
+    allow_origins=["http://localhost:5173", "https://predictive-maintenance-ai-eight.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
