@@ -5,10 +5,10 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
 import pandas as pd
-import chromadb
+# import chromadb
 import os
 from google import genai
-from sentence_transformers import SentenceTransformer
+# from sentence_transformers import SentenceTransformer
 from torchgen import context
 import time
 
@@ -18,7 +18,7 @@ app = FastAPI(title="Predictive Maintenance AI")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "https://predictive-maintenance-c1i93zv7y-labs4mads.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -34,16 +34,16 @@ model = joblib.load("models/failure_prediction_model.pkl")
 # -----------------------------
 # Load embedding model
 # -----------------------------
-embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+# embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
-# -----------------------------
-# Connect to ChromaDB
-# -----------------------------
-client = chromadb.PersistentClient(path="vector_db")
-collection = client.get_or_create_collection(
-    name="maintenance_knowledge"
-)
+# # -----------------------------
+# # Connect to ChromaDB
+# # -----------------------------
+# client = chromadb.PersistentClient(path="vector_db")
+# collection = client.get_or_create_collection(
+#     name="maintenance_knowledge"
+# )
 
 
 # -----------------------------
@@ -107,16 +107,30 @@ def predict(machine_data: MachineData):
 # -----------------------------
 # RAG retrieval
 # -----------------------------
+maintenance_knowledge = [
+    "High machine temperature can indicate cooling system degradation, blocked airflow, or cooling fan failure.",
+    "Excessive machine vibration can indicate motor bearing wear, shaft misalignment, or mechanical imbalance.",
+    "Low voltage can indicate power supply problems and unstable machine operation.",
+    "Low operating pressure can indicate hydraulic leakage, pump problems, or pressure regulator failure.",
+    "High operating hours increase the possibility of component wear and maintenance requirements.",
+    "Cooling fan failure can cause temperature to rise rapidly.",
+    "Abnormal motor bearing vibration can indicate bearing wear or mechanical damage.",
+    "Power supply fluctuations can cause electronic components to behave incorrectly."
+]
+
 def retrieve_context(query, n_results=3):
+    query_words = set(query.lower().split())
 
-    query_embedding = embedding_model.encode([query]).tolist()
+    scored = []
 
-    results = collection.query(
-        query_embeddings=query_embedding,
-        n_results=n_results
-    )
+    for doc in maintenance_knowledge:
+        doc_words = set(doc.lower().split())
+        score = len(query_words.intersection(doc_words))
+        scored.append((score, doc))
 
-    return results["documents"][0]
+    scored.sort(reverse=True)
+
+    return [doc for score, doc in scored[:n_results]]
 
 
 
